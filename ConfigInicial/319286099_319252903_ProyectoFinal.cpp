@@ -35,6 +35,10 @@ void MouseCallback(GLFWwindow* window, double xPos, double yPos);
 void DoMovement();
 void Animation();
 void CrearSalpicaduras(glm::vec3 posicionImpacto);
+void DibujarReloj(Shader& shader, GLuint VAO, GLuint VBO, const glm::mat4& baseTransform);
+void DibujarApagador(Shader& shader, GLuint VAO, GLuint VBO, const glm::mat4& baseTransform);
+void ActualizarBufferColor(GLuint VBO, const glm::vec3& color);
+void DibujarCubo(Shader& shader, GLuint VBO, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& color);
 
 // Camera
 Camera camera(glm::vec3(0.0f, 5.0f, 15.0f));
@@ -92,6 +96,23 @@ bool aguaEncendida = false;
 
 // ========== SISTEMA DE BILLBOARDS PARA VAPOR ==========
 bool vaporEncendido = false;
+
+// ========== CONFIGURACIÓN DEL SILLÓN ==========
+glm::vec3 posSillon = glm::vec3(3.5296f, 0.000001f, -.5f);  // Ajustado
+float rotacionSillonY = 180;
+
+// Colores del sillón
+glm::vec3 colorAzulSillon(0.30f, 0.70f, 0.95f);
+glm::vec3 colorMoradoSillon(0.60f, 0.35f, 0.85f);
+glm::vec3 colorPatasSillon(0.20f, 0.20f, 0.20f);
+
+float factor = 1.5f;   // ← Cambia esto para hacerlo más grande o pequeño
+
+glm::vec3 escBaseSillon = glm::vec3(1.0f, 0.08f, 0.55f) * factor;
+glm::vec3 escCojinSillon = glm::vec3(0.95f, 0.09f, 0.50f) * factor;
+glm::vec3 escRespSillon = glm::vec3(0.95f, 0.24f, 0.09f) * factor;
+glm::vec3 escBrazoSillon = glm::vec3(0.20f, 0.20f, 0.28f) * factor;
+glm::vec3 escPataSillon = glm::vec3(0.06f, 0.11f, 0.06f) * factor;
 
 // ========== SISTEMA DE ILUMINACIÓN ==========
 bool lucesEncendidas = false;
@@ -169,7 +190,7 @@ int main()
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
     // Create window
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Proyecto Final Orihuela y Frias", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Proyecto Final con Reloj y Apagador", nullptr, nullptr);
 
     if (nullptr == window)
     {
@@ -371,8 +392,73 @@ int main()
 
     glBindVertexArray(0);
 
+    // ========== GEOMETRÍA DE LA SILLA (COLOR AMARILLO) ==========
+    float verticesSilla[] = {
+        // Front face
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, 0.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f, 0.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f, 0.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, 1.0f,
+        // Back face
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, -1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 0.0f, -1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f, 0.0f, -1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f, 0.0f, -1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 0.0f, -1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, -1.0f,
+        // Right face
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 0.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f, 0.0f,
+         // Left face
+         -0.5f,  0.5f,  0.5f,  -1.0f, 0.0f, 0.0f,
+         -0.5f,  0.5f, -0.5f,  -1.0f, 0.0f, 0.0f,
+         -0.5f, -0.5f, -0.5f,  -1.0f, 0.0f, 0.0f,
+         -0.5f, -0.5f, -0.5f,  -1.0f, 0.0f, 0.0f,
+         -0.5f, -0.5f,  0.5f,  -1.0f, 0.0f, 0.0f,
+         -0.5f,  0.5f,  0.5f,  -1.0f, 0.0f, 0.0f,
+         // Bottom face
+         -0.5f, -0.5f, -0.5f,  0.0f, -1.0f, 0.0f,
+          0.5f, -0.5f, -0.5f,  0.0f, -1.0f, 0.0f,
+          0.5f, -0.5f,  0.5f,  0.0f, -1.0f, 0.0f,
+          0.5f, -0.5f,  0.5f,  0.0f, -1.0f, 0.0f,
+         -0.5f, -0.5f,  0.5f,  0.0f, -1.0f, 0.0f,
+         -0.5f, -0.5f, -0.5f,  0.0f, -1.0f, 0.0f,
+         // Top face
+         -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, 0.0f,
+          0.5f,  0.5f, -0.5f,  0.0f, 1.0f, 0.0f,
+          0.5f,  0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
+          0.5f,  0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
+         -0.5f,  0.5f,  0.5f,  0.0f, 1.0f, 0.0f,
+         -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, 0.0f,
+    };
+
+    GLuint VAO_silla, VBO_silla;
+    glGenVertexArrays(1, &VAO_silla);
+    glGenBuffers(1, &VBO_silla);
+    glBindVertexArray(VAO_silla);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO_silla);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(verticesSilla), verticesSilla, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
     // Projection matrix
     glm::mat4 projection = glm::perspective(camera.GetZoom(), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.1f, 100.0f);
+
+    std::cout << "\n========== CONTROLES ADICIONALES ==========\n";
+    std::cout << "Los objetos RELOJ y APAGADOR están integrados en la escena\n";
+    std::cout << "===========================================\n\n";
 
     // Game loop
     while (!glfwWindowShouldClose(window))
@@ -391,11 +477,6 @@ int main()
 
         // ========== FONDO HELLO KITTY - ROSA PASTEL 💖 ==========
         glClearColor(1.0f, 0.8f, 0.9f, 1.0f);  // Rosa pastel suave
-        // Otras opciones:
-        // glClearColor(0.8f, 0.9f, 1.0f, 1.0f);  // Celeste pastel
-        // glClearColor(0.9f, 0.85f, 1.0f, 1.0f);  // Lavanda pastel
-        // glClearColor(1.0f, 0.9f, 0.85f, 1.0f);  // Melocotón pastel
-
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // ========== CONFIGURAR ILUMINACIÓN ==========
@@ -416,14 +497,14 @@ int main()
         }
         else
         {
-            // Sol apagado - Luz reducida (como estaba antes)
+            // Sol apagado - Luz reducida
             glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.ambient"), 0.3f, 0.3f, 0.35f);
             glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.diffuse"), 0.5f, 0.5f, 0.55f);
             glUniform3f(glGetUniformLocation(lightingShader.Program, "dirLight.specular"), 0.2f, 0.2f, 0.25f);
         }
 
-        // Luces puntuales (focos) - INTENSIDAD BALANCEADA
-        for (int i = 0; i < 5; i++)  // 5 focos ahora
+        // Luces puntuales (focos) - INTENSIDAD REDUCIDA
+        for (int i = 0; i < 5; i++)
         {
             std::string pointLight = "pointLights[" + std::to_string(i) + "]";
 
@@ -432,9 +513,10 @@ int main()
 
             if (lucesEncendidas)
             {
-                glUniform3f(glGetUniformLocation(lightingShader.Program, (pointLight + ".ambient").c_str()), 0.15f, 0.13f, 0.06f);
-                glUniform3f(glGetUniformLocation(lightingShader.Program, (pointLight + ".diffuse").c_str()), 0.4f, 0.35f, 0.18f);
-                glUniform3f(glGetUniformLocation(lightingShader.Program, (pointLight + ".specular").c_str()), 0.25f, 0.25f, 0.15f);
+                // INTENSIDAD REDUCIDA - Dividida aproximadamente entre 3-4
+                glUniform3f(glGetUniformLocation(lightingShader.Program, (pointLight + ".ambient").c_str()), 0.04f, 0.035f, 0.015f);
+                glUniform3f(glGetUniformLocation(lightingShader.Program, (pointLight + ".diffuse").c_str()), 0.12f, 0.10f, 0.05f);
+                glUniform3f(glGetUniformLocation(lightingShader.Program, (pointLight + ".specular").c_str()), 0.07f, 0.07f, 0.04f);
             }
             else
             {
@@ -575,8 +657,8 @@ int main()
         if (solEncendido)
         {
             model = glm::mat4(1.0f);
-            model = glm::translate(model, glm::vec3(15.0f, 15.0f, -10.0f));  // Posición del sol (arriba y lejos)
-            model = glm::scale(model, glm::vec3(3.0f, 3.0f, 3.0f));  // Tamaño grande
+            model = glm::translate(model, glm::vec3(15.0f, 15.0f, -10.0f));
+            model = glm::scale(model, glm::vec3(3.0f, 3.0f, 3.0f));
             glUniformMatrix4fv(glGetUniformLocation(lampShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
             sol.Draw(lampShader);
         }
@@ -741,10 +823,6 @@ int main()
         // Posición central de la pecera
         glm::vec3 centroPecera = glm::vec3(-4.2546f, 0.81017f, -2.6099f);
 
-        // ===== AJUSTE 1: RADIO Y AMPLITUD REDUCIDOS PARA NO SALIRSE =====
-        // Dimensiones pecera: X=0.441m, Y=0.323m, Z=0.269m
-        // El eje más pequeño es Z (0.269m), semi-profundidad = 0.1345m
-        // Usamos radio de 0.08m para dejar margen (el modelo del pez también ocupa espacio)
         float radioCarrusel = 0.08f;
 
         // Calcular posición en trayectoria circular (carrusel en XZ)
@@ -752,8 +830,6 @@ int main()
         float offsetZ = radioCarrusel * sin(anguloCarrusel);
 
         // Movimiento senoidal en Y con amplitud reducida
-        // Semi-altura de la pecera: 0.323/2 = 0.1615m
-        // Usamos amplitud de 0.06m para mantenernos bien dentro
         float amplitudSeno = 0.06f;
         float frecuenciaSeno = 2.0f;
         float offsetY = amplitudSeno * sin(frecuenciaSeno * tiempoPeces);
@@ -761,10 +837,280 @@ int main()
         // Aplicar transformaciones
         model = glm::translate(model, centroPecera);
         model = glm::translate(model, glm::vec3(offsetX, offsetY, offsetZ));
-        model = glm::rotate(model, anguloCarrusel, glm::vec3(0.0f, 1.0f, 0.0f));  // Rotación carrusel
+        model = glm::rotate(model, anguloCarrusel, glm::vec3(0.0f, 1.0f, 0.0f));
 
         glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(model));
         peces.Draw(lightingShader);
+
+        // ========== SILLA AMARILLA (OPENGL NATIVO) - USAR LIGHTINGSHADER ==========
+        lightingShader.Use();
+        glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+        glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "view"), 1, GL_FALSE, glm::value_ptr(view));
+
+        // Establecer el color amarillo para la silla
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "material.ambient"), 1.0f, 0.85f, 0.0f);   // Amarillo
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "material.diffuse"), 1.0f, 0.85f, 0.0f);   // Amarillo
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "material.specular"), 0.5f, 0.5f, 0.3f);   // Brillo moderado
+        glUniform1f(glGetUniformLocation(lightingShader.Program, "material.shininess"), 32.0f);
+
+        glm::vec3 posSilla = glm::vec3(4.2383f, 0.0f, -5.6406f);
+        float rotacionSillaY = -37.39f;
+
+        const float asientoAncho = 0.611f;
+        const float asientoProf = 0.412f;
+        const float asientoY = 0.45f;
+        const float asientoGrosor = 0.05f;
+
+        const float respaldoAlto = 0.45f;
+        const float respaldoGrosor = 0.04f;
+        const float respaldoAncho = 0.611f;
+        const float gapAsientoRespaldo = 0.02f;
+
+        const float pataAlto = 0.40f;
+        const float pataGrosor = 0.05f;
+
+        const float travesanoGrosor = 0.04f;
+
+        GLint modelLoc = glGetUniformLocation(lightingShader.Program, "model");
+
+        glBindVertexArray(VAO_silla);
+
+        // 1. ASIENTO
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, posSilla);
+        model = glm::rotate(model, glm::radians(rotacionSillaY), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::translate(model, glm::vec3(0.0f, asientoY, 0.0f));
+        model = glm::scale(model, glm::vec3(asientoAncho, asientoGrosor, asientoProf));
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // 2. RESPALDO
+        float respaldoY = asientoY + asientoGrosor / 2.0f + respaldoAlto / 2.0f + gapAsientoRespaldo;
+        float respaldoZ = -asientoProf / 2.0f + respaldoGrosor / 2.0f;
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, posSilla);
+        model = glm::rotate(model, glm::radians(rotacionSillaY), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::translate(model, glm::vec3(0.0f, respaldoY, respaldoZ));
+        model = glm::scale(model, glm::vec3(respaldoAncho, respaldoAlto, respaldoGrosor));
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // 3. PATAS (4 patas)
+        float xPata = (asientoAncho / 2.0f) - (pataGrosor / 2.0f) - 0.03f;
+        float zPata = (asientoProf / 2.0f) - (pataGrosor / 2.0f) - 0.03f;
+        float yPata = (asientoY - asientoGrosor / 2.0f) - pataAlto / 2.0f;
+
+        // Pata delantera izquierda
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, posSilla);
+        model = glm::rotate(model, glm::radians(rotacionSillaY), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::translate(model, glm::vec3(-xPata, yPata, zPata));
+        model = glm::scale(model, glm::vec3(pataGrosor, pataAlto, pataGrosor));
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // Pata delantera derecha
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, posSilla);
+        model = glm::rotate(model, glm::radians(rotacionSillaY), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::translate(model, glm::vec3(xPata, yPata, zPata));
+        model = glm::scale(model, glm::vec3(pataGrosor, pataAlto, pataGrosor));
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // Pata trasera izquierda
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, posSilla);
+        model = glm::rotate(model, glm::radians(rotacionSillaY), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::translate(model, glm::vec3(-xPata, yPata, -zPata));
+        model = glm::scale(model, glm::vec3(pataGrosor, pataAlto, pataGrosor));
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // Pata trasera derecha
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, posSilla);
+        model = glm::rotate(model, glm::radians(rotacionSillaY), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::translate(model, glm::vec3(xPata, yPata, -zPata));
+        model = glm::scale(model, glm::vec3(pataGrosor, pataAlto, pataGrosor));
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // 4. TRAVESANOS HORIZONTALES
+        const float travesanoAncho = asientoAncho - pataGrosor * 2.0f - 0.06f;
+        const float yTravesano = yPata + pataAlto / 2.0f - 0.10f;
+
+        // Travesano horizontal delantero
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, posSilla);
+        model = glm::rotate(model, glm::radians(rotacionSillaY), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::translate(model, glm::vec3(0.0f, yTravesano, zPata));
+        model = glm::scale(model, glm::vec3(travesanoAncho, travesanoGrosor, travesanoGrosor));
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // Travesano horizontal trasero
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, posSilla);
+        model = glm::rotate(model, glm::radians(rotacionSillaY), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::translate(model, glm::vec3(0.0f, yTravesano, -zPata));
+        model = glm::scale(model, glm::vec3(travesanoAncho, travesanoGrosor, travesanoGrosor));
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // 5. SOPORTES VERTICALES entre asiento y respaldo
+        float altoSoporte = 0.25f;
+        float ySoporte = asientoY + asientoGrosor / 2.0f + altoSoporte / 2.0f;
+        float zSoporte = respaldoZ;
+
+        // Soporte vertical izquierdo
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, posSilla);
+        model = glm::rotate(model, glm::radians(rotacionSillaY), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::translate(model, glm::vec3(-xPata, ySoporte, zSoporte));
+        model = glm::scale(model, glm::vec3(travesanoGrosor, altoSoporte, travesanoGrosor));
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // Soporte vertical derecho
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, posSilla);
+        model = glm::rotate(model, glm::radians(rotacionSillaY), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::translate(model, glm::vec3(xPata, ySoporte, zSoporte));
+        model = glm::scale(model, glm::vec3(travesanoGrosor, altoSoporte, travesanoGrosor));
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        glBindVertexArray(0);
+
+        // ========== SILLÓN (OPENGL NATIVO) ==========
+        lightingShader.Use();
+
+        // Calcular alturas
+        float yPataSillon = escPataSillon.y * 0.5f;
+        float yBaseSillon = escPataSillon.y + escBaseSillon.y * 0.5f;
+        float yCojinSillon = escPataSillon.y + escBaseSillon.y + escCojinSillon.y * 0.5f;
+        float yBrazoSillon = escPataSillon.y + escBaseSillon.y + escBrazoSillon.y * 0.5f;
+        float yTopCojinSillon = yCojinSillon + escCojinSillon.y * 0.5f;
+        float yRespSillon = yTopCojinSillon - 0.005f + escRespSillon.y * 0.5f;
+
+        glBindVertexArray(VAO_silla);
+
+        // BASE del sillón (azul)
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "material.ambient"), colorAzulSillon.r, colorAzulSillon.g, colorAzulSillon.b);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "material.diffuse"), colorAzulSillon.r, colorAzulSillon.g, colorAzulSillon.b);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "material.specular"), 0.5f, 0.5f, 0.3f);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, posSillon);
+        model = glm::rotate(model, glm::radians(rotacionSillonY), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::translate(model, glm::vec3(0.0f, yBaseSillon, 0.0f));
+        model = glm::scale(model, escBaseSillon);
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // COJÍN (morado)
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "material.ambient"), colorMoradoSillon.r, colorMoradoSillon.g, colorMoradoSillon.b);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "material.diffuse"), colorMoradoSillon.r, colorMoradoSillon.g, colorMoradoSillon.b);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, posSillon);
+        model = glm::rotate(model, glm::radians(rotacionSillonY), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::translate(model, glm::vec3(0.0f, yCojinSillon, 0.0f));
+        model = glm::scale(model, escCojinSillon);
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // RESPALDO (morado)
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, posSillon);
+        model = glm::rotate(model, glm::radians(rotacionSillonY), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::translate(model, glm::vec3(0.0f, yRespSillon, -0.20f));
+        model = glm::scale(model, escRespSillon);
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // BRAZOS (azul)
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "material.ambient"), colorAzulSillon.r, colorAzulSillon.g, colorAzulSillon.b);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "material.diffuse"), colorAzulSillon.r, colorAzulSillon.g, colorAzulSillon.b);
+
+        float xBrazoSillon = (escBaseSillon.x * 0.5f) - (escBrazoSillon.x * 0.5f) + 0.02f;
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, posSillon);
+        model = glm::rotate(model, glm::radians(rotacionSillonY), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::translate(model, glm::vec3(xBrazoSillon, yBrazoSillon, 0.02f));
+        model = glm::scale(model, escBrazoSillon);
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, posSillon);
+        model = glm::rotate(model, glm::radians(rotacionSillonY), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::translate(model, glm::vec3(-xBrazoSillon, yBrazoSillon, 0.02f));
+        model = glm::scale(model, escBrazoSillon);
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // PATAS (gris oscuro)
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "material.ambient"), colorPatasSillon.r, colorPatasSillon.g, colorPatasSillon.b);
+        glUniform3f(glGetUniformLocation(lightingShader.Program, "material.diffuse"), colorPatasSillon.r, colorPatasSillon.g, colorPatasSillon.b);
+
+        float semiBaseXSillon = escBaseSillon.x * 0.5f, semiBaseZSillon = escBaseSillon.z * 0.5f;
+        float semiPataXSillon = escPataSillon.x * 0.5f, semiPataZSillon = escPataSillon.z * 0.5f;
+        float xPSillon = semiBaseXSillon - semiPataXSillon - 0.06f;
+        float zPSillon = semiBaseZSillon - semiPataZSillon - 0.06f;
+
+        // 4 patas
+        for (int i = 0; i < 4; i++) {
+            float xPos = (i % 2 == 0) ? xPSillon : -xPSillon;
+            float zPos = (i < 2) ? zPSillon : -zPSillon;
+
+            model = glm::mat4(1.0f);
+            model = glm::translate(model, posSillon);
+            model = glm::rotate(model, glm::radians(rotacionSillonY), glm::vec3(0.0f, 1.0f, 0.0f));
+            model = glm::translate(model, glm::vec3(xPos, yPataSillon, zPos));
+            model = glm::scale(model, escPataSillon);
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+
+        glBindVertexArray(0);
+
+        // ========================================
+// ✨ DIBUJAR RELOJ DE PARED
+// ========================================
+      // ========================================
+// ✨ DIBUJAR RELOJ DE PARED
+// ========================================
+        glm::mat4 transformReloj(1.0f);
+        transformReloj = glm::translate(transformReloj, glm::vec3(5.7853f, 1.99f, -1.0028f));
+
+        // IGUAL QUE EL APAGADOR: 90° en X (no -90°)
+        transformReloj = glm::rotate(transformReloj, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));   // ✅ Cambio: 90° en lugar de -90°
+
+        // Ahora prueba diferentes ángulos en Y
+        transformReloj = glm::rotate(transformReloj, glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f));  // ✅ Prueba 180° como el apagador
+
+        transformReloj = glm::scale(transformReloj, glm::vec3(0.397f, 0.404f, 0.104f));
+        DibujarReloj(lightingShader, VAO_silla, VBO_silla, transformReloj);
+        // ========================================
+// 💡 DIBUJAR APAGADOR/INTERRUPTOR
+// ========================================
+        glm::mat4 transformApagador(1.0f);
+        transformApagador = glm::translate(transformApagador, glm::vec3(2.0995f, 1.1402f, -1.3277f));
+
+        // PRIMERO: Rota 90° en X para que quede plano contra la pared
+        transformApagador = glm::rotate(transformApagador, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+
+        // SEGUNDO: Rota en Y si es necesario para orientarlo correctamente
+        transformApagador = glm::rotate(transformApagador, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+        transformApagador = glm::scale(transformApagador, glm::vec3(0.207f, 0.0863f, 0.19f));
+        DibujarApagador(lightingShader, VAO_silla, VBO_silla, transformApagador);
+
+        // Volver a usar lightingShader
+        lightingShader.Use();
 
         // ========== OBJETOS CON TRANSPARENCIA (PECERA + VENTANAS) ==========
         glEnable(GL_BLEND);
@@ -813,12 +1159,9 @@ int main()
                     model[1] = glm::vec4(cameraUp, 0.0f);
                     model[2] = glm::vec4(glm::cross(cameraRight, cameraUp), 0.0f);
 
-                    // Tamaño variable según tipo de partícula
                     float anchoGota = particulas[i].tamano;
-                    float altoGota = particulas[i].tamano * 1.5f;  // Más alargada
+                    float altoGota = particulas[i].tamano * 1.5f;
 
-                    // ===== AJUSTE 2: SALPICADURAS MÁS GRANDES =====
-                    // Salpicaduras son ahora 2x más grandes que antes (antes era 0.3x, ahora 0.6x)
                     if (particulas[i].esSalpicadura)
                     {
                         anchoGota *= 0.6f;
@@ -892,9 +1235,200 @@ int main()
     glDeleteBuffers(1, &EBO_billboard);
     glDeleteTextures(1, &texturaGota);
     glDeleteTextures(1, &texturaVapor);
+    glDeleteVertexArrays(1, &VAO_silla);
+    glDeleteBuffers(1, &VBO_silla);
 
     glfwTerminate();
     return 0;
+}
+
+// ===================================================================
+// FUNCIONES AUXILIARES PARA EL RELOJ Y EL APAGADOR
+// ===================================================================
+
+void ActualizarBufferColor(GLuint VBO, const glm::vec3& color)
+{
+    float colorData[216];
+    for (int i = 0; i < 36; i++)
+    {
+        colorData[i * 6 + 3] = color.r;
+        colorData[i * 6 + 4] = color.g;
+        colorData[i * 6 + 5] = color.b;
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    for (int i = 0; i < 36; i++)
+    {
+        glBufferSubData(GL_ARRAY_BUFFER,
+            i * 6 * sizeof(float) + 3 * sizeof(float),
+            3 * sizeof(float),
+            &colorData[i * 6 + 3]);
+    }
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void DibujarCubo(Shader& shader, GLuint VBO, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& color)
+{
+    ActualizarBufferColor(VBO, color);
+
+    glm::mat4 m(1.0f);
+    m = glm::translate(m, pos);
+    m = glm::scale(m, scale);
+
+    GLint modelLoc = glGetUniformLocation(shader.Program, "model");
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(m));
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+}
+
+void DibujarReloj(Shader& shader, GLuint VAO, GLuint VBO, const glm::mat4& baseTransform)
+{
+    glBindVertexArray(VAO);
+
+    glm::vec3 colorMarcoRojo(0.95f, 0.25f, 0.35f);
+    glm::vec3 colorFondoRosa(0.98f, 0.85f, 0.90f);
+    glm::vec3 colorAzul(0.20f, 0.30f, 0.80f);
+    glm::vec3 colorCentro(0.95f, 0.30f, 0.40f);
+
+    GLint modelLoc = glGetUniformLocation(shader.Program, "model");
+
+    // ✅ Lambda mejorada con valores de iluminación aumentados
+    auto dibujaComponente = [&](const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& color)
+        {
+            // ✅ AUMENTAR ambient para que siempre sea visible (multiplicar por 1.5-2.0)
+            glUniform3f(glGetUniformLocation(shader.Program, "material.ambient"),
+                color.r * 1.8f, color.g * 1.8f, color.b * 1.8f);
+
+            // ✅ AUMENTAR diffuse para mejor iluminación
+            glUniform3f(glGetUniformLocation(shader.Program, "material.diffuse"),
+                color.r * 1.5f, color.g * 1.5f, color.b * 1.5f);
+
+            // ✅ AUMENTAR specular para brillos
+            glUniform3f(glGetUniformLocation(shader.Program, "material.specular"),
+                0.8f, 0.8f, 0.8f);
+
+            // ✅ AUMENTAR shininess para reflejos
+            glUniform1f(glGetUniformLocation(shader.Program, "material.shininess"), 64.0f);
+
+            glm::mat4 m = baseTransform;
+            m = glm::translate(m, pos);
+            m = glm::scale(m, scale);
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(m));
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        };
+
+    // 1. Marco exterior rojo
+    dibujaComponente(glm::vec3(0.0f, 0.0f, -0.05f), glm::vec3(2.4f, 2.4f, 0.15f), colorMarcoRojo);
+
+    // 2. Fondo rosa
+    dibujaComponente(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(2.0f, 2.0f, 0.12f), colorFondoRosa);
+
+    // 3. Marcas de horas
+    float radioMarcas = 0.85f;
+    for (int i = 0; i < 12; i++)
+    {
+        float angulo = (i * 30.0f - 90.0f) * 3.14159f / 180.0f;
+        float x = radioMarcas * cos(angulo);
+        float y = radioMarcas * sin(angulo);
+
+        if (i % 3 == 0)
+            dibujaComponente(glm::vec3(x, y, 0.06f), glm::vec3(0.12f, 0.35f, 0.14f), colorAzul);
+        else
+            dibujaComponente(glm::vec3(x, y, 0.06f), glm::vec3(0.08f, 0.25f, 0.14f), colorAzul);
+    }
+
+    // 4. Manecilla horaria (10:00)
+    float anguloHora = (10 * 30.0f - 90.0f) * 3.14159f / 180.0f;
+    float largoHora = 0.45f;
+    float xHora = (largoHora / 2.0f) * cos(anguloHora);
+    float yHora = (largoHora / 2.0f) * sin(anguloHora);
+
+    // ✅ AUMENTAR valores para la manecilla
+    glUniform3f(glGetUniformLocation(shader.Program, "material.ambient"),
+        colorAzul.r * 1.8f, colorAzul.g * 1.8f, colorAzul.b * 1.8f);
+    glUniform3f(glGetUniformLocation(shader.Program, "material.diffuse"),
+        colorAzul.r * 1.5f, colorAzul.g * 1.5f, colorAzul.b * 1.5f);
+    glUniform3f(glGetUniformLocation(shader.Program, "material.specular"), 0.8f, 0.8f, 0.8f);
+    glUniform1f(glGetUniformLocation(shader.Program, "material.shininess"), 64.0f);
+
+    glm::mat4 modelHora = baseTransform;
+    modelHora = glm::translate(modelHora, glm::vec3(xHora, yHora, 0.08f));
+    modelHora = glm::rotate(modelHora, anguloHora + 3.14159f / 2.0f, glm::vec3(0, 0, 1));
+    modelHora = glm::scale(modelHora, glm::vec3(0.15f, largoHora, 0.08f));
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelHora));
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    // 5. Manecilla minutera (2:00)
+    float anguloMinuto = (2 * 30.0f - 90.0f) * 3.14159f / 180.0f;
+    float largoMinuto = 0.75f;
+    float xMinuto = (largoMinuto / 2.0f) * cos(anguloMinuto);
+    float yMinuto = (largoMinuto / 2.0f) * sin(anguloMinuto);
+
+    // ✅ AUMENTAR valores para la manecilla
+    glUniform3f(glGetUniformLocation(shader.Program, "material.ambient"),
+        colorCentro.r * 1.8f, colorCentro.g * 1.8f, colorCentro.b * 1.8f);
+    glUniform3f(glGetUniformLocation(shader.Program, "material.diffuse"),
+        colorCentro.r * 1.5f, colorCentro.g * 1.5f, colorCentro.b * 1.5f);
+    glUniform3f(glGetUniformLocation(shader.Program, "material.specular"), 0.8f, 0.8f, 0.8f);
+    glUniform1f(glGetUniformLocation(shader.Program, "material.shininess"), 64.0f);
+
+    glm::mat4 modelMinuto = baseTransform;
+    modelMinuto = glm::translate(modelMinuto, glm::vec3(xMinuto, yMinuto, 0.09f));
+    modelMinuto = glm::rotate(modelMinuto, anguloMinuto + 3.14159f / 2.0f, glm::vec3(0, 0, 1));
+    modelMinuto = glm::scale(modelMinuto, glm::vec3(0.10f, largoMinuto, 0.08f));
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMinuto));
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+
+    // 6. Centro
+    dibujaComponente(glm::vec3(0.0f, 0.0f, 0.10f), glm::vec3(0.25f, 0.25f, 0.08f), colorCentro);
+
+    glBindVertexArray(0);
+}
+
+void DibujarApagador(Shader& shader, GLuint VAO, GLuint VBO, const glm::mat4& baseTransform)
+{
+    glBindVertexArray(VAO);
+
+    glm::vec3 colorMarco(1.0f, 0.85f, 0.2f);      // Amarillo fuerte
+    glm::vec3 colorPlaca(1.0f, 0.95f, 0.7f);      // Amarillo claro
+    glm::vec3 colorInterruptor(0.95f, 0.2f, 0.2f); // Rojo
+
+    GLint modelLoc = glGetUniformLocation(shader.Program, "model");
+
+    // ✅ Lambda mejorada con valores de iluminación aumentados
+    auto dibujaComponente = [&](const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& color)
+        {
+            // ✅ AUMENTAR ambient para que siempre sea visible (multiplicar por 1.5-2.0)
+            glUniform3f(glGetUniformLocation(shader.Program, "material.ambient"),
+                color.r * 1.8f, color.g * 1.8f, color.b * 1.8f);
+
+            // ✅ AUMENTAR diffuse para mejor iluminación
+            glUniform3f(glGetUniformLocation(shader.Program, "material.diffuse"),
+                color.r * 1.5f, color.g * 1.5f, color.b * 1.5f);
+
+            // ✅ AUMENTAR specular para brillos
+            glUniform3f(glGetUniformLocation(shader.Program, "material.specular"),
+                0.8f, 0.8f, 0.8f);
+
+            // ✅ AUMENTAR shininess para reflejos
+            glUniform1f(glGetUniformLocation(shader.Program, "material.shininess"), 64.0f);
+
+            glm::mat4 m = baseTransform;
+            m = glm::translate(m, pos);
+            m = glm::scale(m, scale);
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(m));
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        };
+
+    // 1. Marco exterior
+    dibujaComponente(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.4f, 1.4f, 0.2f), colorMarco);
+
+    // 2. Placa intermedia
+    dibujaComponente(glm::vec3(0.0f, 0.0f, 0.11f), glm::vec3(1.15f, 1.15f, 0.15f), colorPlaca);
+
+    // 3. Interruptor central
+    dibujaComponente(glm::vec3(0.0f, 0.0f, 0.2f), glm::vec3(0.45f, 0.35f, 0.12f), colorInterruptor);
+
+    glBindVertexArray(0);
 }
 
 // Función de animación
@@ -902,7 +1436,7 @@ void Animation()
 {
     float velocidadPuerta = 60.0f * deltaTime;
     float velocidadCortina = 1.5f * deltaTime;
-    float velocidadCajon = 0.8f * deltaTime;  // Velocidad de los cajones
+    float velocidadCajon = 0.8f * deltaTime;
 
     // Animación del tambor
     if (animTambor)
@@ -927,14 +1461,12 @@ void Animation()
     // ========== ANIMACIÓN DE PECES (CARRUSEL + SENOIDAL) ==========
     if (animPeces)
     {
-        // Rotación del carrusel (giro sobre el eje Y)
-        anguloCarrusel += 0.5f * deltaTime;  // Velocidad de rotación lenta
-        if (anguloCarrusel >= 2.0f * 3.14159f)  // 2π radianes = 360°
+        anguloCarrusel += 0.5f * deltaTime;
+        if (anguloCarrusel >= 2.0f * 3.14159f)
         {
             anguloCarrusel -= 2.0f * 3.14159f;
         }
 
-        // Tiempo para la trayectoria senoidal
         tiempoPeces += deltaTime;
     }
 
@@ -1032,7 +1564,6 @@ void Animation()
     {
         if (abrirCajonGrande)
         {
-            // Mover hacia adelante (aumentar Z, de -2.33 a -1.90)
             posCajonGrandeZ += velocidadCajon;
             if (posCajonGrandeZ >= POS_FINAL_CAJON_GRANDE_Z)
             {
@@ -1042,7 +1573,6 @@ void Animation()
         }
         else
         {
-            // Cerrar cajón (disminuir Z, de -1.90 a -2.33)
             posCajonGrandeZ -= velocidadCajon;
             if (posCajonGrandeZ <= POS_INICIAL_CAJON_GRANDE_Z)
             {
@@ -1057,7 +1587,6 @@ void Animation()
     {
         if (abrirCajonChico)
         {
-            // Mover hacia adelante (aumentar Z, de -2.33 a -1.90)
             posCajonChicoZ += velocidadCajon;
             if (posCajonChicoZ >= POS_FINAL_CAJON_CHICO_Z)
             {
@@ -1067,7 +1596,6 @@ void Animation()
         }
         else
         {
-            // Cerrar cajón (disminuir Z, de -1.90 a -2.33)
             posCajonChicoZ -= velocidadCajon;
             if (posCajonChicoZ <= POS_INICIAL_CAJON_CHICO_Z)
             {
@@ -1087,7 +1615,6 @@ void Animation()
         {
             tiempoGeneracion = 0.0f;
 
-            // Buscar slot para nueva gota principal
             for (int i = 0; i < NUM_GOTAS; i++)
             {
                 if (!particulas[i].activa)
@@ -1095,18 +1622,15 @@ void Animation()
                     particulas[i].activa = true;
                     particulas[i].esSalpicadura = false;
 
-                    // POSICIÓN: Todas salen del MISMO PUNTO (sin dispersión)
                     particulas[i].posicion = posicionBoquilla;
 
-                    // VELOCIDAD: Caída vertical con muy poca variación lateral
                     particulas[i].velocidad = glm::vec3(
-                        ((rand() % 5) - 2) / 1000.0f,  // Mínima variación X
-                        -0.3f,                          // Velocidad inicial hacia abajo
-                        ((rand() % 5) - 2) / 1000.0f   // Mínima variación Z
+                        ((rand() % 5) - 2) / 1000.0f,
+                        -0.3f,
+                        ((rand() % 5) - 2) / 1000.0f
                     );
 
-                    // TAMAÑO: 3.5x más grande con variación aleatoria
-                    float tamanoBase = 0.28f;  // 0.08 * 3.5
+                    float tamanoBase = 0.28f;
                     particulas[i].tamano = tamanoBase + ((rand() % 20) - 10) / 200.0f;
 
                     particulas[i].vida = TIEMPO_VIDA_GOTA;
@@ -1115,27 +1639,22 @@ void Animation()
             }
         }
 
-        // Actualizar todas las partículas
         for (int i = 0; i < NUM_GOTAS; i++)
         {
             if (particulas[i].activa)
             {
                 if (!particulas[i].esSalpicadura)
                 {
-                    // GOTAS PRINCIPALES: Física con gravedad
                     particulas[i].velocidad.y -= GRAVEDAD * deltaTime;
                     particulas[i].posicion += particulas[i].velocidad * deltaTime;
                     particulas[i].vida -= deltaTime;
 
-                    // Colisión con el fondo del lavabo
                     if (particulas[i].posicion.y <= alturaLavabo)
                     {
-                        // Crear salpicaduras en el punto de impacto
                         CrearSalpicaduras(particulas[i].posicion);
                         particulas[i].activa = false;
                     }
 
-                    // Muerte por tiempo
                     if (particulas[i].vida <= 0.0f)
                     {
                         particulas[i].activa = false;
@@ -1143,12 +1662,10 @@ void Animation()
                 }
                 else
                 {
-                    // SALPICADURAS: Física de rebote
                     particulas[i].velocidad.y -= GRAVEDAD * deltaTime;
                     particulas[i].posicion += particulas[i].velocidad * deltaTime;
                     particulas[i].vida -= deltaTime;
 
-                    // Las salpicaduras mueren al caer de nuevo o por tiempo
                     if (particulas[i].posicion.y <= alturaLavabo || particulas[i].vida <= 0.0f)
                     {
                         particulas[i].activa = false;
@@ -1159,7 +1676,6 @@ void Animation()
     }
     else
     {
-        // Desactivar todas las partículas cuando se apaga el agua
         for (int i = 0; i < NUM_GOTAS; i++)
         {
             particulas[i].activa = false;
@@ -1297,7 +1813,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
     {
         animCajonGrande = true;
         float puntoMedio = (POS_INICIAL_CAJON_GRANDE_Z + POS_FINAL_CAJON_GRANDE_Z) / 2.0f;
-        abrirCajonGrande = (posCajonGrandeZ < puntoMedio);  // Si está más atrás que el medio, abrir
+        abrirCajonGrande = (posCajonGrandeZ < puntoMedio);
         std::cout << "Cajón Grande " << (abrirCajonGrande ? "ABRIENDO" : "CERRANDO") << std::endl;
     }
 
@@ -1306,7 +1822,7 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
     {
         animCajonChico = true;
         float puntoMedio = (POS_INICIAL_CAJON_CHICO_Z + POS_FINAL_CAJON_CHICO_Z) / 2.0f;
-        abrirCajonChico = (posCajonChicoZ < puntoMedio);  // Si está más atrás que el medio, abrir
+        abrirCajonChico = (posCajonChicoZ < puntoMedio);
         std::cout << "Cajón Chico " << (abrirCajonChico ? "ABRIENDO" : "CERRANDO") << std::endl;
     }
 
@@ -1369,15 +1885,12 @@ void MouseCallback(GLFWwindow* window, double xPos, double yPos)
     camera.ProcessMouseMovement(xOffset, yOffset);
 }
 
-// ===== AJUSTE 2: FUNCIÓN PARA CREAR SALPICADURAS MÁS GRANDES Y MÁS LEJOS =====
 void CrearSalpicaduras(glm::vec3 posicionImpacto)
 {
-    // Crear 5-8 salpicaduras por cada gota que cae
-    int numSalpicaduras = 5 + (rand() % 4);  // Entre 5 y 8
+    int numSalpicaduras = 5 + (rand() % 4);
 
     for (int j = 0; j < numSalpicaduras; j++)
     {
-        // Buscar un slot libre para la salpicadura
         for (int i = 0; i < NUM_GOTAS; i++)
         {
             if (!particulas[i].activa)
@@ -1385,35 +1898,24 @@ void CrearSalpicaduras(glm::vec3 posicionImpacto)
                 particulas[i].activa = true;
                 particulas[i].esSalpicadura = true;
 
-                // Posición: Donde impactó la gota (en el fondo del lavabo)
                 particulas[i].posicion = posicionImpacto;
-                particulas[i].posicion.y = alturaLavabo;  // En el fondo
+                particulas[i].posicion.y = alturaLavabo;
 
-                // Ángulo aleatorio para dispersión radial
                 float angulo = (rand() % 360) * 3.14159f / 180.0f;
 
-                // ===== MÁS LEJOS: Aumentar distancia de dispersión 3x =====
-                // Antes: 0.05 a 0.20 unidades
-                // Ahora: 0.15 a 0.60 unidades (3x más lejos)
-                float distancia = 0.15f + (rand() % 45) / 100.0f;  // 0.15 a 0.60
+                float distancia = 0.15f + (rand() % 45) / 100.0f;
 
-                // Velocidad: Salpica hacia arriba y hacia los lados
-                // ===== MÁS LEJOS: Aumentar velocidad lateral y vertical =====
                 particulas[i].velocidad = glm::vec3(
-                    cos(angulo) * distancia * 5.0f,     // Dispersión en X (antes 2.0f, ahora 5.0f)
-                    0.8f + (rand() % 20) / 100.0f,      // Sube 0.8-1.0 unidades (antes 0.3-0.4)
-                    sin(angulo) * distancia * 5.0f      // Dispersión en Z (antes 2.0f, ahora 5.0f)
+                    cos(angulo) * distancia * 5.0f,
+                    0.8f + (rand() % 20) / 100.0f,
+                    sin(angulo) * distancia * 5.0f
                 );
 
-                // ===== MÁS GRANDES: Tamaño aumentado 2.5x =====
-                // Antes: 0.08 + variación pequeña
-                // Ahora: 0.20 + variación (2.5x más grandes)
                 particulas[i].tamano = 0.20f + (rand() % 10) / 100.0f;
 
-                // Tiempo de vida corto
                 particulas[i].vida = TIEMPO_VIDA_SALPICADURA;
 
-                break;  // Pasar a la siguiente salpicadura
+                break;
             }
         }
     }
