@@ -186,7 +186,7 @@ int main()
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
     // Create window
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "319286099_ProyectoFinalTeoria_Grupo05", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "319285099_ProyectoFinalTeoria_Grupo05", nullptr, nullptr);
 
     if (nullptr == window)
     {
